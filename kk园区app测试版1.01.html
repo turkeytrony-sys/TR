@@ -1,0 +1,2582 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>奇幻卡牌对战</title>
+    
+    <!-- 添加这3行PWA代码 -->
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🃏</text></svg>">
+
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        body {
+            font-family: 'Microsoft YaHei', sans-serif;
+            background: linear-gradient(135deg, #1a2a6c, #b21f1f, #fdbb2d);
+            color: white;
+            min-height: 100vh;
+            touch-action: manipulation;
+            -webkit-touch-callout: none;
+            -webkit-user-select: none;
+            user-select: none;
+            padding: 5px;
+            font-size: 14px;
+        }
+
+        #game-container {
+            max-width: 100%;
+            margin: 0 auto;
+        }
+
+        .game-header {
+            background: rgba(0, 0, 0, 0.7);
+            padding: 12px;
+            border-radius: 10px;
+            margin-bottom: 15px;
+            text-align: center;
+        }
+
+        .game-header h1 {
+            font-size: 18px;
+            margin-bottom: 8px;
+        }
+
+        .game-info {
+            display: flex;
+            justify-content: space-around;
+            flex-wrap: wrap;
+            gap: 10px;
+        }
+
+        .opponents-area {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            margin-bottom: 15px;
+        }
+
+        .opponent {
+            background: rgba(255,255,255,0.1);
+            padding: 10px;
+            border-radius: 8px;
+        }
+
+        .opponent-info {
+            margin-bottom: 8px;
+        }
+
+        .opponent-name {
+            font-weight: bold;
+            font-size: 14px;
+            margin-bottom: 4px;
+        }
+
+        .opponent-stats {
+            font-size: 12px;
+            color: #ccc;
+            display: flex;
+            gap: 10px;
+        }
+
+        .opponent-blood-cards {
+            display: flex;
+            gap: 4px;
+            margin-top: 5px;
+        }
+
+        .blood-card-slot {
+            width: 30px;
+            height: 40px;
+            background: rgba(255,255,255,0.2);
+            border-radius: 4px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 10px;
+            border: 1px solid rgba(255,255,255,0.3);
+        }
+
+        .blood-card-slot.face-up {
+            background: linear-gradient(135deg, #ff6b6b, #ee5a24);
+            color: white;
+        }
+
+        .blood-card-slot.empty {
+            background: rgba(255,255,255,0.1);
+            color: #999;
+        }
+
+        .player-area {
+            background: rgba(0, 0, 0, 0.6);
+            padding: 15px;
+            border-radius: 10px;
+            margin-top: 15px;
+        }
+
+        .player-info h3 {
+            font-size: 16px;
+            margin-bottom: 8px;
+        }
+
+        .status {
+            display: flex;
+            justify-content: space-between;
+            flex-wrap: wrap;
+            gap: 8px;
+            font-size: 13px;
+            margin-bottom: 10px;
+        }
+
+        .section-title {
+            font-size: 13px;
+            margin: 10px 0 5px 0;
+            color: #ffeb3b;
+        }
+
+        .cards-container {
+            display: flex;
+            flex-wrap: nowrap;
+            overflow-x: auto;
+            margin: 10px 0;
+            padding: 8px 5px;
+            background: rgba(255,255,255,0.1);
+            border-radius: 8px;
+            min-height: 120px;
+            -webkit-overflow-scrolling: touch;
+        }
+
+        .card {
+            flex: 0 0 auto;
+            width: 75px;
+            height: 105px;
+            background: white;
+            border-radius: 6px;
+            border: 2px solid #ddd;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+            padding: 6px;
+            margin: 0 4px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            color: black;
+            position: relative;
+        }
+
+        .card:active {
+            transform: translateY(-3px);
+        }
+
+        .card.selected {
+            border-color: #ffeb3b;
+            box-shadow: 0 0 8px #ffeb3b;
+        }
+
+        .card.spade { border-left: 4px solid #000; }
+        .card.heart { border-left: 4px solid #e74c3c; }
+        .card.club { border-left: 4px solid #27ae60; }
+        .card.diamond { border-left: 4px solid #f39c12; }
+        .card.joker { border-left: 4px solid #9b59b6; }
+
+        .card-rank {
+            font-size: 16px;
+            font-weight: bold;
+            line-height: 1;
+        }
+
+        .card-suit {
+            font-size: 20px;
+            text-align: center;
+            line-height: 1;
+        }
+
+        .card-point {
+            font-size: 11px;
+            color: #666;
+            text-align: center;
+        }
+
+        .blood-cards .card, .equipment-cards .card {
+            background: linear-gradient(135deg, #ff6b6b, #ee5a24);
+            color: white;
+        }
+
+        .equipment-cards .card {
+            background: linear-gradient(135deg, #3498db, #2980b9);
+        }
+
+        .card.special::after {
+            content: '✨';
+            position: absolute;
+            top: -5px;
+            right: -5px;
+            font-size: 12px;
+            background: gold;
+            border-radius: 50%;
+            width: 18px;
+            height: 18px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            box-shadow: 0 0 5px gold;
+        }
+
+        .blood-cards .card.special::after {
+            top: -3px;
+            right: -3px;
+            font-size: 10px;
+            width: 16px;
+            height: 16px;
+        }
+
+        .card.wild::before {
+            content: '🌟';
+            position: absolute;
+            top: -5px;
+            left: -5px;
+            font-size: 12px;
+            background: linear-gradient(45deg, #ff6b6b, #ffeb3b, #27ae60);
+            border-radius: 50%;
+            width: 18px;
+            height: 18px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            box-shadow: 0 0 5px gold;
+        }
+
+        .card.heart-blood::after {
+            content: '❤️';
+            position: absolute;
+            top: -5px;
+            right: -5px;
+            font-size: 12px;
+            background: #e74c3c;
+            border-radius: 50%;
+            width: 18px;
+            height: 18px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            box-shadow: 0 0 5px #e74c3c;
+        }
+
+        .blood-cards .card.heart-blood::after {
+            top: -3px;
+            right: -3px;
+            font-size: 10px;
+            width: 16px;
+            height: 16px;
+        }
+
+        .action-buttons {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 8px;
+            margin-top: 15px;
+        }
+
+        .action-buttons button {
+            padding: 12px 8px;
+            border: none;
+            border-radius: 6px;
+            background: #3498db;
+            color: white;
+            cursor: pointer;
+            font-size: 13px;
+            transition: background 0.3s;
+            min-height: 44px;
+        }
+
+        .action-buttons button:active:not(:disabled) {
+            background: #2980b9;
+            transform: scale(0.98);
+        }
+
+        .action-buttons button:disabled {
+            background: #7f8c8d;
+            cursor: not-allowed;
+        }
+
+        .modal {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0,0,0,0.9);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 1000;
+            padding: 20px;
+        }
+
+        .modal-content {
+            background: #2c3e50;
+            padding: 20px;
+            border-radius: 10px;
+            width: 100%;
+            max-width: 400px;
+            max-height: 80vh;
+            overflow-y: auto;
+        }
+
+        .modal h3 {
+            margin-bottom: 15px;
+            text-align: center;
+        }
+
+        .target-buttons {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            margin-bottom: 15px;
+        }
+
+        .target-buttons button {
+            padding: 12px;
+            background: #34495e;
+            color: white;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+        }
+
+        .modal-actions {
+            display: flex;
+            gap: 10px;
+        }
+
+        .modal-actions button {
+            flex: 1;
+            padding: 12px;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+        }
+
+        #confirm-attack {
+            background: #e74c3c;
+            color: white;
+        }
+
+        #cancel-attack {
+            background: #7f8c8d;
+            color: white;
+        }
+
+        #confirm-combo {
+            background: #27ae60;
+            color: white;
+        }
+
+        #confirm-combo:disabled {
+            background: #7f8c8d;
+            cursor: not-allowed;
+        }
+
+        .hidden {
+            display: none !important;
+        }
+
+        .game-log {
+            background: rgba(0,0,0,0.7);
+            padding: 12px;
+            border-radius: 8px;
+            margin-top: 15px;
+            max-height: 120px;
+            overflow-y: auto;
+            -webkit-overflow-scrolling: touch;
+        }
+
+        .game-log h4 {
+            font-size: 14px;
+            margin-bottom: 8px;
+        }
+
+        #log-content {
+            font-size: 12px;
+            line-height: 1.3;
+        }
+
+        .log-entry {
+            margin: 4px 0;
+            padding: 4px 8px;
+            border-left: 2px solid #3498db;
+            background: rgba(255,255,255,0.05);
+        }
+
+        .card-combo-options {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            margin: 10px 0;
+        }
+
+        .combo-option {
+            flex: 1;
+            min-width: 120px;
+            padding: 10px;
+            background: #34495e;
+            border-radius: 6px;
+            text-align: center;
+            cursor: pointer;
+            border: 2px solid transparent;
+        }
+
+        .combo-option.selected {
+            border-color: #ffeb3b;
+            background: rgba(255, 235, 59, 0.1);
+        }
+
+        .combo-option h4 {
+            font-size: 12px;
+            margin-bottom: 4px;
+        }
+
+        .combo-option p {
+            font-size: 10px;
+            color: #ccc;
+        }
+
+        .dying-warning {
+            background: #e74c3c;
+            color: white;
+            padding: 10px;
+            border-radius: 6px;
+            margin: 10px 0;
+            text-align: center;
+            animation: pulse 1.5s infinite;
+        }
+
+        .victory-message {
+            background: #27ae60;
+            color: white;
+            padding: 15px;
+            border-radius: 10px;
+            margin: 15px 0;
+            text-align: center;
+            font-size: 18px;
+            font-weight: bold;
+        }
+
+        .special-card-actions {
+            display: flex;
+            gap: 8px;
+            margin: 10px 0;
+            padding: 10px;
+            background: rgba(155, 89, 182, 0.3);
+            border-radius: 6px;
+        }
+
+        .heart-card-actions {
+            display: flex;
+            gap: 8px;
+            margin: 10px 0;
+            padding: 10px;
+            background: rgba(231, 76, 60, 0.3);
+            border-radius: 6px;
+        }
+
+        .special-card-actions button, .heart-card-actions button {
+            flex: 1;
+            padding: 8px;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 12px;
+        }
+
+        .special-card-actions button:disabled, .heart-card-actions button:disabled {
+            background: #7f8c8d;
+            cursor: not-allowed;
+        }
+
+        .double-click-hint {
+            font-size: 11px;
+            color: #666;
+            text-align: center;
+            margin-top: 2px;
+        }
+
+        .hand-limit-warning {
+            background: #f39c12;
+            color: white;
+            padding: 10px;
+            border-radius: 6px;
+            margin: 10px 0;
+            text-align: center;
+            animation: pulse 1.5s infinite;
+        }
+
+        @keyframes pulse {
+            0% { opacity: 0.7; }
+            50% { opacity: 1; }
+            100% { opacity: 0.7; }
+        }
+    </style>
+</head>
+<body>
+    <div id="game-container">
+        <header class="game-header">
+            <h1>🃏 奇幻卡牌对战 - 完整修复版</h1>
+            <div class="game-info">
+                <span>轮次: <span id="round">1</span></span>
+                <span>阶段: <span id="phase">准备</span></span>
+                <button id="new-game" style="padding: 8px 12px; font-size: 12px;">新游戏</button>
+            </div>
+        </header>
+
+        <div id="victory-message" class="victory-message hidden"></div>
+
+        <div class="opponents-area" id="opponents-area">
+            <!-- 只有1个AI对手 -->
+        </div>
+
+        <div class="player-area">
+            <div class="player-info">
+                <h3>👤 你的区域</h3>
+                <div class="status">
+                    <span>手牌: <span id="hand-count">0</span>/<span id="max-hand">10</span></span>
+                    <span>血牌: <span id="blood-count">0</span>/5</span>
+                    <span>状态: <span id="player-status">正常</span></span>
+                </div>
+            </div>
+
+            <div id="dying-warning" class="dying-warning hidden">
+                💀 你处于濒死状态！请使用红心牌补充血牌区，否则下回合将死亡！
+            </div>
+
+            <div id="hand-limit-warning" class="hand-limit-warning hidden">
+                ⚠️ 手牌超过上限！结束回合前需要弃2张牌摸1张牌！
+            </div>
+
+            <div class="section-title">❤️ 血牌区 (双击操作)</div>
+            <div class="cards-container blood-cards" id="blood-cards">
+                <!-- 动态生成 -->
+            </div>
+
+            <div class="section-title">🃏 手牌区 (点击选择，双击特殊牌操作)</div>
+            <div class="cards-container hand-cards" id="hand-cards">
+                <!-- 动态生成 -->
+            </div>
+
+            <div class="section-title">🛡️ 装备区</div>
+            <div class="cards-container equipment-cards" id="equipment-cards">
+                <!-- 动态生成 -->
+            </div>
+
+            <!-- 特殊牌操作区域 -->
+            <div id="special-card-actions" class="special-card-actions hidden">
+                <button id="move-to-hand">🃏 移入手牌</button>
+                <button id="move-to-blood">❤️ 放回血牌</button>
+                <button id="cancel-special">取消</button>
+            </div>
+
+            <!-- 红心牌操作区域 -->
+            <div id="heart-card-actions" class="heart-card-actions hidden">
+                <button id="retrieve-heart">🃏 移入手牌</button>
+                <button id="cancel-heart">取消</button>
+            </div>
+
+            <div class="action-buttons">
+                <button id="place-blood-btn" disabled>❤️ 放置血牌</button>
+                <button id="attack-btn" disabled>⚔️ 普通攻击</button>
+                <button id="special-attack-btn" disabled>✨ 特殊攻击</button>
+                <button id="equip-btn" disabled>🔧 合成装备</button>
+                <button id="discard-btn">🔄 弃牌摸牌</button>
+                <button id="end-turn">⏭️ 结束回合</button>
+            </div>
+        </div>
+
+        <div id="card-selection" class="modal hidden">
+            <div class="modal-content">
+                <h3>🎯 选择攻击目标</h3>
+                <div class="target-buttons" id="target-players"></div>
+                <div class="modal-actions">
+                    <button id="confirm-attack">确认攻击</button>
+                    <button id="cancel-attack">取消</button>
+                </div>
+            </div>
+        </div>
+
+        <div id="combo-selection" class="modal hidden">
+            <div class="modal-content">
+                <h3>🎴 选择牌形</h3>
+                <div class="card-combo-options" id="combo-options"></div>
+                <div class="modal-actions">
+                    <button id="confirm-combo" disabled>确认牌形</button>
+                    <button id="cancel-combo">取消</button>
+                </div>
+            </div>
+        </div>
+
+        <div class="game-log">
+            <h4>📜 游戏日志</h4>
+            <div id="log-content"></div>
+        </div>
+    </div>
+
+    <script>
+        // 完整的卡牌数据
+        const CARD_DATA = {
+            basic: [
+                // 黑桃 ♠️
+                { id: 's-2', suit: 'spade', rank: 2, point: 2, name: '黑桃2', type: 'kill' },
+                { id: 's-3', suit: 'spade', rank: 3, point: 3, name: '黑桃3', type: 'kill' },
+                { id: 's-4', suit: 'spade', rank: 4, point: 4, name: '黑桃4', type: 'kill' },
+                { id: 's-5', suit: 'spade', rank: 5, point: 5, name: '黑桃5', type: 'kill' },
+                { id: 's-6', suit: 'spade', rank: 6, point: 6, name: '黑桃6', type: 'kill' },
+                { id: 's-7', suit: 'spade', rank: 7, point: 7, name: '黑桃7', type: 'kill' },
+                { id: 's-8', suit: 'spade', rank: 8, point: 8, name: '黑桃8', type: 'kill' },
+                { id: 's-9', suit: 'spade', rank: 9, point: 9, name: '黑桃9', type: 'kill' },
+                { id: 's-10', suit: 'spade', rank: 10, point: 10, name: '黑桃10', type: 'kill' },
+                { id: 's-J', suit: 'spade', rank: 11, point: 11, name: '黑桃J', type: 'kill' },
+                { id: 's-Q', suit: 'spade', rank: 12, point: 12, name: '黑桃Q', type: 'kill' },
+                { id: 's-K', suit: 'spade', rank: 13, point: 13, name: '黑桃K', type: 'kill' },
+                { id: 's-A', suit: 'spade', rank: 14, point: 14, name: '黑桃A', type: 'kill' },
+                
+                // 红心 ♥️
+                { id: 'h-2', suit: 'heart', rank: 2, point: 2, name: '红心2', type: 'blood' },
+                { id: 'h-3', suit: 'heart', rank: 3, point: 3, name: '红心3', type: 'blood' },
+                { id: 'h-4', suit: 'heart', rank: 4, point: 4, name: '红心4', type: 'blood' },
+                { id: 'h-5', suit: 'heart', rank: 5, point: 5, name: '红心5', type: 'blood' },
+                { id: 'h-6', suit: 'heart', rank: 6, point: 6, name: '红心6', type: 'blood' },
+                { id: 'h-7', suit: 'heart', rank: 7, point: 7, name: '红心7', type: 'blood' },
+                { id: 'h-8', suit: 'heart', rank: 8, point: 8, name: '红心8', type: 'blood' },
+                { id: 'h-9', suit: 'heart', rank: 9, point: 9, name: '红心9', type: 'blood' },
+                { id: 'h-10', suit: 'heart', rank: 10, point: 10, name: '红心10', type: 'blood' },
+                { id: 'h-J', suit: 'heart', rank: 11, point: 11, name: '红心J', type: 'blood' },
+                { id: 'h-Q', suit: 'heart', rank: 12, point: 12, name: '红心Q', type: 'blood' },
+                { id: 'h-K', suit: 'heart', rank: 13, point: 13, name: '红心K', type: 'blood' },
+                { id: 'h-A', suit: 'heart', rank: 14, point: 14, name: '红心A', type: 'blood' },
+                
+                // 梅花 ♣️
+                { id: 'c-2', suit: 'club', rank: 2, point: 2, name: '梅花2', type: 'support' },
+                { id: 'c-3', suit: 'club', rank: 3, point: 3, name: '梅花3', type: 'support' },
+                { id: 'c-4', suit: 'club', rank: 4, point: 4, name: '梅花4', type: 'support' },
+                { id: 'c-5', suit: 'club', rank: 5, point: 5, name: '梅花5', type: 'support' },
+                { id: 'c-6', suit: 'club', rank: 6, point: 6, name: '梅花6', type: 'support' },
+                { id: 'c-7', suit: 'club', rank: 7, point: 7, name: '梅花7', type: 'support' },
+                { id: 'c-8', suit: 'club', rank: 8, point: 8, name: '梅花8', type: 'support' },
+                { id: 'c-9', suit: 'club', rank: 9, point: 9, name: '梅花9', type: 'support' },
+                { id: 'c-10', suit: 'club', rank: 10, point: 10, name: '梅花10', type: 'support' },
+                { id: 'c-J', suit: 'club', rank: 11, point: 11, name: '梅花J', type: 'support' },
+                { id: 'c-Q', suit: 'club', rank: 12, point: 12, name: '梅花Q', type: 'support' },
+                { id: 'c-K', suit: 'club', rank: 13, point: 13, name: '梅花K', type: 'support' },
+                { id: 'c-A', suit: 'club', rank: 14, point: 14, name: '梅花A', type: 'support' },
+                
+                // 方块 ♦️
+                { id: 'd-2', suit: 'diamond', rank: 2, point: 2, name: '方块2', type: 'support' },
+                { id: 'd-3', suit: 'diamond', rank: 3, point: 3, name: '方块3', type: 'support' },
+                { id: 'd-4', suit: 'diamond', rank: 4, point: 4, name: '方块4', type: 'support' },
+                { id: 'd-5', suit: 'diamond', rank: 5, point: 5, name: '方块5', type: 'support' },
+                { id: 'd-6', suit: 'diamond', rank: 6, point: 6, name: '方块6', type: 'support' },
+                { id: 'd-7', suit: 'diamond', rank: 7, point: 7, name: '方块7', type: 'support' },
+                { id: 'd-8', suit: 'diamond', rank: 8, point: 8, name: '方块8', type: 'support' },
+                { id: 'd-9', suit: 'diamond', rank: 9, point: 9, name: '方块9', type: 'support' },
+                { id: 'd-10', suit: 'diamond', rank: 10, point: 10, name: '方块10', type: 'support' },
+                { id: 'd-J', suit: 'diamond', rank: 11, point: 11, name: '方块J', type: 'support' },
+                { id: 'd-Q', suit: 'diamond', rank: 12, point: 12, name: '方块Q', type: 'support' },
+                { id: 'd-K', suit: 'diamond', rank: 13, point: 13, name: '方块K', type: 'support' },
+                { id: 'd-A', suit: 'diamond', rank: 14, point: 14, name: '方块A', type: 'support' }
+            ],
+            
+            special: [
+                { 
+                    id: 'joker-small', 
+                    suit: 'joker', 
+                    rank: 15, 
+                    point: 15, 
+                    name: '小王', 
+                    type: 'special',
+                    isWild: true
+                },
+                { 
+                    id: 'joker-big', 
+                    suit: 'joker', 
+                    rank: 16, 
+                    point: 16, 
+                    name: '大王', 
+                    type: 'special',
+                    isWild: true
+                }
+            ]
+        };
+
+        // 修复的牌形定义
+        const CARD_COMBOS = {
+            straight: {
+                name: '顺子',
+                description: 'n+2张连续点数的牌，攻击力为点数之和，造成伤害后可抽取所有玩家一张手牌',
+                minCards: 4,
+                maxCards: null,
+                validate: (cards, playerCount = 2) => {
+                    const n = playerCount;
+                    const requiredCards = n + 2;
+                    
+                    if (cards.length < requiredCards) return false;
+                    
+                    const wildCards = cards.filter(c => c.isWild);
+                    const normalCards = cards.filter(c => !c.isWild);
+                    
+                    if (normalCards.length === 0) {
+                        return cards.length >= requiredCards;
+                    }
+                    
+                    let points = [...new Set(normalCards.map(c => c.point))];
+                    if (points.includes(14)) {
+                        points = [...points, 1];
+                    }
+                    
+                    points.sort((a, b) => a - b);
+                    
+                    if (points.length < 2) return false;
+                    
+                    const checkConsecutive = (pointsArr, wildCount) => {
+                        for (let i = 0; i <= pointsArr.length - requiredCards + wildCount; i++) {
+                            let gaps = 0;
+                            for (let j = i + 1; j < i + requiredCards - wildCount; j++) {
+                                if (j >= pointsArr.length) break;
+                                const gap = pointsArr[j] - pointsArr[j-1] - 1;
+                                if (gap > 0) {
+                                    gaps += gap;
+                                }
+                            }
+                            if (gaps <= wildCount) {
+                                return true;
+                            }
+                        }
+                        return false;
+                    };
+                    
+                    return checkConsecutive(points, wildCards.length) && cards.length >= requiredCards;
+                },
+                calculatePower: (cards) => {
+                    const normalCards = cards.filter(c => !c.isWild);
+                    const wildCards = cards.filter(c => c.isWild);
+                    
+                    if (normalCards.length === 0) {
+                        return cards.reduce((sum, card) => sum + card.point, 0);
+                    }
+                    
+                    let totalPower = normalCards.reduce((sum, card) => sum + card.point, 0);
+                    
+                    if (wildCards.length > 0) {
+                        const avgPoint = totalPower / normalCards.length;
+                        totalPower += wildCards.length * Math.round(avgPoint);
+                    }
+                    
+                    return totalPower;
+                },
+                effect: 'steal_all_hand_after_damage'
+            },
+
+            flushStraight: {
+                name: '同花顺',
+                description: 'n+2张连续点数相同花色的牌，攻击力为点数之和，造成伤害后可抽取所有玩家手牌并摸n张基础牌',
+                minCards: 4,
+                maxCards: null,
+                validate: (cards, playerCount = 2) => {
+                    const n = playerCount;
+                    const requiredCards = n + 2;
+                    
+                    if (cards.length < requiredCards) return false;
+                    
+                    const wildCards = cards.filter(c => c.isWild);
+                    const normalCards = cards.filter(c => !c.isWild);
+                    
+                    if (normalCards.length === 0) {
+                        return cards.length >= requiredCards;
+                    }
+                    
+                    const suit = normalCards[0].suit;
+                    if (!normalCards.every(c => c.suit === suit)) return false;
+                    
+                    let points = [...new Set(normalCards.map(c => c.point))];
+                    if (points.includes(14)) {
+                        points = [...points, 1];
+                    }
+                    
+                    points.sort((a, b) => a - b);
+                    
+                    if (points.length < 2) return false;
+                    
+                    const checkConsecutive = (pointsArr, wildCount) => {
+                        for (let i = 0; i <= pointsArr.length - requiredCards + wildCount; i++) {
+                            let gaps = 0;
+                            for (let j = i + 1; j < i + requiredCards - wildCount; j++) {
+                                if (j >= pointsArr.length) break;
+                                const gap = pointsArr[j] - pointsArr[j-1] - 1;
+                                if (gap > 0) {
+                                    gaps += gap;
+                                }
+                            }
+                            if (gaps <= wildCount) {
+                                return true;
+                            }
+                        }
+                        return false;
+                    };
+                    
+                    return checkConsecutive(points, wildCards.length) && cards.length >= requiredCards;
+                },
+                calculatePower: (cards) => {
+                    const normalCards = cards.filter(c => !c.isWild);
+                    const wildCards = cards.filter(c => c.isWild);
+                    
+                    if (normalCards.length === 0) {
+                        return cards.reduce((sum, card) => sum + card.point, 0);
+                    }
+                    
+                    let totalPower = normalCards.reduce((sum, card) => sum + card.point, 0);
+                    
+                    if (wildCards.length > 0) {
+                        const avgPoint = totalPower / normalCards.length;
+                        totalPower += wildCards.length * Math.round(avgPoint);
+                    }
+                    
+                    return totalPower;
+                },
+                effect: 'steal_all_hand_and_draw_after_damage'
+            },
+
+            royalStraight: {
+                name: '皇家顺',
+                description: '♠️10JQKA，攻击力为点数之和，造成伤害后可获得对方所有手牌并摸两张基础牌',
+                minCards: 5,
+                maxCards: 5,
+                validate: (cards) => {
+                    if (cards.length !== 5) return false;
+                    
+                    const wildCards = cards.filter(c => c.isWild);
+                    const normalCards = cards.filter(c => !c.isWild);
+                    
+                    if (wildCards.length > 0) return false;
+                    
+                    if (!normalCards.every(c => c.suit === 'spade')) return false;
+                    
+                    const requiredRanks = [10, 11, 12, 13, 14];
+                    const cardRanks = normalCards.map(c => c.rank).sort((a, b) => a - b);
+                    
+                    return JSON.stringify(cardRanks) === JSON.stringify(requiredRanks);
+                },
+                calculatePower: (cards) => cards.reduce((sum, card) => sum + card.point, 0),
+                effect: 'take_all_hand_after_damage'
+            },
+
+            // 修复的坦克牌形 - 支持连续对子和万能牌
+            tank: {
+                name: '坦克',
+                description: '连续n对连续点数的对子，万能牌可充当任何点数，可对n-1名玩家造成伤害',
+                minCards: 4,
+                maxCards: null,
+                validate: (cards, playerCount = 2) => {
+                    const n = playerCount;
+                    const requiredPairs = n;
+                    const requiredCards = requiredPairs * 2;
+                    
+                    if (cards.length !== requiredCards) return false;
+                    if (cards.length % 2 !== 0) return false;
+                    
+                    const wildCards = cards.filter(c => c.isWild);
+                    const normalCards = cards.filter(c => !c.isWild);
+                    const totalWilds = wildCards.length;
+                    
+                    // 获取所有普通牌的点数（支持A=1）
+                    let normalPoints = [];
+                    normalCards.forEach(card => {
+                        normalPoints.push(card.point);
+                        if (card.point === 14) normalPoints.push(1);
+                    });
+                    normalPoints = [...new Set(normalPoints)].sort((a, b) => a - b);
+                    
+                    // 检查是否存在连续的requiredPairs个点数
+                    for (let start = 0; start <= normalPoints.length - requiredPairs; start++) {
+                        const sequence = [];
+                        for (let i = 0; i < requiredPairs; i++) {
+                            sequence.push(normalPoints[start + i]);
+                        }
+                        
+                        // 检查这个序列是否连续
+                        let isConsecutive = true;
+                        for (let i = 0; i < requiredPairs - 1; i++) {
+                            if (sequence[i + 1] - sequence[i] !== 1) {
+                                isConsecutive = false;
+                                break;
+                            }
+                        }
+                        
+                        if (isConsecutive) {
+                            // 检查这个连续序列是否能用现有牌+万能牌组成对子
+                            let wildsNeeded = 0;
+                            let sequenceValid = true;
+                            
+                            for (const point of sequence) {
+                                const pointCards = normalCards.filter(c => 
+                                    c.point === point || (c.point === 14 && point === 1)
+                                );
+                                
+                                if (pointCards.length >= 2) {
+                                    continue;
+                                } else if (pointCards.length === 1) {
+                                    wildsNeeded += 1;
+                                } else {
+                                    wildsNeeded += 2;
+                                }
+                            }
+                            
+                            if (wildsNeeded <= totalWilds) {
+                                return true;
+                            }
+                        }
+                    }
+                    
+                    // 如果普通牌点数不够连续，检查是否能用万能牌创建完整连续序列
+                    if (normalPoints.length === 0 && totalWilds >= requiredPairs * 2) {
+                        return true;
+                    }
+                    
+                    // 检查部分连续，用万能牌补全的情况
+                    if (normalPoints.length > 0) {
+                        const minPoint = Math.min(...normalPoints);
+                        const maxPoint = Math.max(...normalPoints);
+                        const sequenceLength = maxPoint - minPoint + 1;
+                        
+                        if (sequenceLength >= requiredPairs) {
+                            let wildsNeeded = 0;
+                            for (let point = minPoint; point < minPoint + requiredPairs; point++) {
+                                const pointCards = normalCards.filter(c => 
+                                    c.point === point || (c.point === 14 && point === 1)
+                                );
+                                
+                                if (pointCards.length >= 2) {
+                                    continue;
+                                } else if (pointCards.length === 1) {
+                                    wildsNeeded += 1;
+                                } else {
+                                    wildsNeeded += 2;
+                                }
+                            }
+                            
+                            if (wildsNeeded <= totalWilds) {
+                                return true;
+                            }
+                        }
+                    }
+                    
+                    return false;
+                },
+                calculatePower: (cards) => {
+                    const normalCards = cards.filter(c => !c.isWild);
+                    const wildCards = cards.filter(c => c.isWild);
+                    
+                    let totalPower = normalCards.reduce((sum, card) => sum + card.point, 0);
+                    
+                    if (wildCards.length > 0) {
+                        const avgPoint = normalCards.length > 0 ? totalPower / normalCards.length : 10;
+                        totalPower += wildCards.length * Math.round(avgPoint);
+                    }
+                    
+                    return totalPower;
+                },
+                effect: 'multi_target_attack'
+            },
+
+            // 修复的板砖牌形 - 明确支持万能牌组合
+            brick: {
+                name: '板砖',
+                description: '三张相同点数的牌，万能牌可充当任何点数，造成伤害后可摸一张基础牌',
+                minCards: 3,
+                maxCards: 3,
+                validate: (cards) => {
+                    if (cards.length !== 3) return false;
+                    
+                    const wildCards = cards.filter(c => c.isWild);
+                    const normalCards = cards.filter(c => !c.isWild);
+                    
+                    // 明确支持的情况：
+                    if (normalCards.length === 2 && wildCards.length === 1) {
+                        // 两张普通牌 + 一张万能牌 - 检查两张普通牌点数是否相同
+                        return normalCards[0].point === normalCards[1].point;
+                    }
+                    if (normalCards.length === 1 && wildCards.length === 2) {
+                        // 一张普通牌 + 两张万能牌
+                        return true;
+                    }
+                    if (normalCards.length === 3) {
+                        // 三张相同点数的普通牌
+                        return normalCards[0].point === normalCards[1].point && 
+                               normalCards[1].point === normalCards[2].point;
+                    }
+                    if (wildCards.length === 3) {
+                        // 三张万能牌
+                        return true;
+                    }
+                    
+                    return false;
+                },
+                calculatePower: (cards) => {
+                    const normalCards = cards.filter(c => !c.isWild);
+                    const wildCards = cards.filter(c => c.isWild);
+                    
+                    if (normalCards.length === 0) {
+                        return cards.reduce((sum, card) => sum + card.point, 0);
+                    }
+                    
+                    const basePoint = normalCards[0].point;
+                    let totalPower = normalCards.reduce((sum, card) => sum + card.point, 0);
+                    
+                    totalPower += wildCards.length * basePoint;
+                    
+                    return totalPower;
+                },
+                effect: 'draw_after_damage'
+            }
+        };
+
+        // 修复卡牌工具函数
+        const CardUtils = {
+            getSuitSymbol(suit) {
+                const symbols = {
+                    'spade': '♠',
+                    'heart': '♥', 
+                    'club': '♣',
+                    'diamond': '♦',
+                    'joker': '🃏'
+                };
+                return symbols[suit] || suit;
+            },
+
+            getRankDisplay(rank) {
+                const displays = {
+                    11: 'J',
+                    12: 'Q', 
+                    13: 'K',
+                    14: 'A',
+                    15: '小',
+                    16: '大'
+                };
+                return displays[rank] || rank.toString();
+            },
+            
+            checkCardCombos(cards, playerCount = 2) {
+                const availableCombos = [];
+                
+                for (const [comboKey, combo] of Object.entries(CARD_COMBOS)) {
+                    if (combo.validate(cards, playerCount)) {
+                        availableCombos.push({
+                            key: comboKey,
+                            name: combo.name,
+                            description: combo.description,
+                            power: combo.calculatePower(cards)
+                        });
+                    }
+                }
+                
+                return availableCombos;
+            },
+            
+            checkNormalAttack(cards) {
+                // 修复：万能牌可以作为单张攻击牌
+                if (cards.length === 1 && (cards[0].suit === 'spade' || cards[0].isWild)) {
+                    return {
+                        type: 'single',
+                        name: '单张',
+                        power: cards[0].point,
+                        description: '一张♠️或万能牌，攻击力为点数'
+                    };
+                }
+                
+                // 修复：对子攻击（两张相同点数的牌）
+                if (cards.length === 2) {
+                    const hasSpadeOrWild = cards.some(c => c.suit === 'spade' || c.isWild);
+                    
+                    // 修复：检查点数匹配（考虑万能牌）
+                    let pointsMatch = false;
+                    const normalCards = cards.filter(c => !c.isWild);
+                    const wildCards = cards.filter(c => c.isWild);
+                    
+                    if (normalCards.length === 2) {
+                        pointsMatch = normalCards[0].point === normalCards[1].point;
+                    } else if (normalCards.length === 1 && wildCards.length === 1) {
+                        pointsMatch = true;
+                    } else if (wildCards.length === 2) {
+                        pointsMatch = true;
+                    }
+                    
+                    if (hasSpadeOrWild && pointsMatch) {
+                        let attackPower = 0;
+                        if (normalCards.length === 2) {
+                            attackPower = normalCards[0].point + normalCards[1].point;
+                        } else if (normalCards.length === 1 && wildCards.length === 1) {
+                            attackPower = normalCards[0].point * 2;
+                        } else if (wildCards.length === 2) {
+                            attackPower = wildCards[0].point + wildCards[1].point;
+                        }
+                        
+                        return {
+                            type: 'pair',
+                            name: '对子',
+                            power: attackPower,
+                            description: '一张♠️/万能牌+一张同点数牌，攻击力为点数之和'
+                        };
+                    }
+                }
+                
+                return null;
+            }
+        };
+
+        // 游戏状态管理
+        class GameState {
+            constructor(playerCount = 2, uiManager) {
+                this.playerCount = playerCount;
+                this.players = [];
+                this.currentPlayerIndex = 0;
+                this.round = 1;
+                this.phase = 'draw';
+                this.basicDeck = [];
+                this.specialDeck = [];
+                this.discardPile = [];
+                this.selectedCards = [];
+                this.selectedCombo = null;
+                this.gameLog = [];
+                this.uiManager = uiManager;
+                this.attackUsed = false;
+                this.selectedSpecialCard = null;
+                this.selectedHeartCard = null;
+                this.forceDiscardMode = false;
+                this.forceDiscardCount = 2;
+                this.initializeGame(playerCount);
+            }
+
+            calculateMaxHandCards() {
+                return this.playerCount + 8;
+            }
+
+            setupDecks(playerCount) {
+                this.specialDeck = [];
+                CARD_DATA.basic.forEach(card => {
+                    const cardCopy = this.createCardCopy(card);
+                    cardCopy.isSpecialDeckCard = true;
+                    this.specialDeck.push(cardCopy);
+                });
+                CARD_DATA.special.forEach(card => {
+                    const cardCopy = this.createCardCopy(card);
+                    cardCopy.isSpecialDeckCard = true;
+                    cardCopy.isWild = true;
+                    this.specialDeck.push(cardCopy);
+                });
+                
+                this.basicDeck = [];
+                for (let i = 0; i < 2; i++) {
+                    CARD_DATA.basic.forEach(card => {
+                        const cardCopy = this.createCardCopy(card);
+                        cardCopy.isSpecialDeckCard = false;
+                        this.basicDeck.push(cardCopy);
+                    });
+                    CARD_DATA.special.forEach(card => {
+                        const cardCopy = this.createCardCopy(card);
+                        cardCopy.isSpecialDeckCard = false;
+                        cardCopy.isWild = true;
+                        this.basicDeck.push(cardCopy);
+                    });
+                }
+                
+                this.shuffleDeck(this.specialDeck);
+                this.shuffleDeck(this.basicDeck);
+                this.addLog(`🃏 牌叠初始化完成：特殊牌叠${this.specialDeck.length}张，基础牌叠${this.basicDeck.length}张`);
+            }
+
+            createPlayers(count) {
+                this.players = [];
+                const maxHandCards = this.calculateMaxHandCards();
+                
+                this.players.push({
+                    id: 'player-0',
+                    name: '你',
+                    handCards: [],
+                    bloodCards: [],
+                    equipments: [],
+                    status: 'normal',
+                    maxHandCards: maxHandCards,
+                    maxBloodCards: 5,
+                    attackBonus: 0,
+                    bonusDraws: 0,
+                    immuneTo: [],
+                    isHuman: true,
+                    unconscious: 0
+                });
+                
+                this.players.push({
+                    id: 'player-1',
+                    name: '电脑对手',
+                    handCards: [],
+                    bloodCards: [],
+                    equipments: [],
+                    status: 'normal',
+                    maxHandCards: maxHandCards,
+                    maxBloodCards: 5,
+                    attackBonus: 0,
+                    bonusDraws: 0,
+                    immuneTo: [],
+                    isHuman: false,
+                    unconscious: 0
+                });
+            }
+
+            createCardCopy(card) {
+                return {
+                    ...card,
+                    id: card.id + '-' + Date.now() + '-' + Math.random().toString(36).substr(2, 9),
+                    faceUp: false,
+                    isSpecialDeckCard: card.isSpecialDeckCard || false,
+                    isWild: card.isWild || false
+                };
+            }
+
+            initializeGame(playerCount) {
+                this.setupDecks(playerCount);
+                this.createPlayers(playerCount);
+                this.dealInitialCards();
+                this.addLog('🎮 游戏开始！1v1对战');
+                this.addLog(`📊 手牌上限：${this.calculateMaxHandCards()}张 (人数${this.playerCount} + 8)`);
+                this.addLog('🔄 新功能：红心牌可以移回手牌！双击血牌区红心牌操作');
+                this.startNewTurn();
+            }
+
+            dealInitialCards() {
+                this.players.forEach(player => {
+                    for (let i = 0; i < 3; i++) {
+                        const card = this.drawSpecialCard();
+                        if (card) {
+                            card.faceUp = false;
+                            player.bloodCards.push(card);
+                        }
+                    }
+                    for (let i = 0; i < 2; i++) {
+                        const card = this.drawBasicCard();
+                        if (card) player.handCards.push(card);
+                    }
+                });
+                this.addLog('✅ 初始发牌完成！');
+            }
+
+            isSpecialCard(card) {
+                return card.isSpecialDeckCard;
+            }
+
+            isWildCard(card) {
+                return card.isWild;
+            }
+
+            isHeartCard(card) {
+                return card.suit === 'heart';
+            }
+
+            moveBloodToHand(card) {
+                const player = this.currentPlayer;
+                const cardIndex = player.bloodCards.indexOf(card);
+                
+                if (player.bloodCards.length <= 1) {
+                    this.addLog('❌ 必须至少保留一张血牌！');
+                    return false;
+                }
+                
+                if (cardIndex > -1) {
+                    const bloodCard = player.bloodCards.splice(cardIndex, 1)[0];
+                    player.handCards.push(bloodCard);
+                    this.addLog(`🃏 ${player.name}将血牌 ${bloodCard.name} 移入手牌区`);
+                    return true;
+                }
+                return false;
+            }
+
+            moveHandToBlood(card) {
+                const player = this.currentPlayer;
+                const cardIndex = player.handCards.indexOf(card);
+                
+                if (cardIndex > -1) {
+                    if (player.bloodCards.length >= player.maxBloodCards) {
+                        this.addLog('❌ 血牌区已满！');
+                        return false;
+                    }
+                    
+                    const handCard = player.handCards.splice(cardIndex, 1)[0];
+                    handCard.faceUp = false;
+                    player.bloodCards.push(handCard);
+                    this.addLog(`❤️ ${player.name}将手牌 ${handCard.name} 放回血牌区`);
+                    return true;
+                }
+                return false;
+            }
+
+            retrieveHeartToHand(card) {
+                const player = this.currentPlayer;
+                const cardIndex = player.bloodCards.indexOf(card);
+                
+                if (player.bloodCards.length <= 1) {
+                    this.addLog('❌ 必须至少保留一张血牌！');
+                    return false;
+                }
+                
+                if (cardIndex > -1 && this.isHeartCard(card)) {
+                    const heartCard = player.bloodCards.splice(cardIndex, 1)[0];
+                    player.handCards.push(heartCard);
+                    this.addLog(`🃏 ${player.name}将红心血牌 ${heartCard.name} 移入手牌区`);
+                    return true;
+                }
+                return false;
+            }
+
+            startNewTurn() {
+                this.phase = 'draw';
+                this.selectedCards = [];
+                this.selectedCombo = null;
+                this.attackUsed = false;
+                this.selectedSpecialCard = null;
+                this.selectedHeartCard = null;
+                this.forceDiscardMode = false;
+                this.forceDiscardCount = 2;
+                
+                const player = this.currentPlayer;
+                
+                if (this.checkGameEnd()) {
+                    return;
+                }
+                
+                if (player.status === 'dying') {
+                    this.handleDyingState(player);
+                    return;
+                }
+                
+                if (player.unconscious > 0) {
+                    player.unconscious--;
+                    this.addLog(`💤 ${player.name}昏迷中，跳过回合`);
+                    if (player.unconscious === 0) {
+                        player.status = 'normal';
+                        this.addLog(`✅ ${player.name}从昏迷中醒来`);
+                    }
+                    this.nextTurn();
+                    return;
+                }
+                
+                this.addLog(`🎯 ${player.name}的回合开始`);
+                this.drawPhase();
+            }
+
+            handleDyingState(player) {
+                this.addLog(`💀 ${player.name}处于濒死状态！`);
+                
+                if (player.isHuman) {
+                    this.addLog('⚠️ 请使用红心牌补充血牌区，否则将死亡！');
+                    if (this.uiManager) {
+                        this.uiManager.showDyingWarning();
+                    }
+                } else {
+                    const heartCards = player.handCards.filter(card => card.suit === 'heart');
+                    if (heartCards.length > 0) {
+                        const heartCard = heartCards[0];
+                        const cardIndex = player.handCards.indexOf(heartCard);
+                        if (cardIndex > -1) {
+                            const bloodCard = player.handCards.splice(cardIndex, 1)[0];
+                            bloodCard.faceUp = false;
+                            player.bloodCards.push(bloodCard);
+                            player.status = 'normal';
+                            this.addLog(`🤖 ${player.name}使用 ${bloodCard.name} 自救，脱离濒死状态`);
+                        }
+                    } else {
+                        player.status = 'dead';
+                        this.addLog(`💀 ${player.name}没有红心牌，死亡！`);
+                        this.checkGameEnd();
+                    }
+                }
+            }
+
+            drawPhase() {
+                const player = this.currentPlayer;
+                
+                if (player.status === 'dying') {
+                    this.phase = 'main';
+                    if (this.uiManager) {
+                        this.uiManager.render();
+                    }
+                    return;
+                }
+                
+                let drawCount = 2 + (player.bonusDraws || 0);
+                
+                for (let i = 0; i < drawCount; i++) {
+                    const card = this.drawBasicCard();
+                    if (card) player.handCards.push(card);
+                }
+                
+                this.addLog(`🃏 ${player.name}自动摸了${drawCount}张牌`);
+                this.phase = 'main';
+
+                if (this.uiManager) {
+                    this.uiManager.render();
+                }
+
+                if (!player.isHuman) {
+                    this.executeAITurn();
+                }
+            }
+
+            async executeAITurn() {
+                const player = this.currentPlayer;
+                
+                if (player.status === 'dying') {
+                    this.addLog(`🤖 ${player.name}濒死状态，结束回合`);
+                    await new Promise(resolve => setTimeout(resolve, 1000));
+                    this.nextTurn();
+                    return;
+                }
+                
+                this.addLog(`🤖 ${player.name}正在思考...`);
+                
+                if (player.handCards.length > player.maxHandCards) {
+                    for (let i = 0; i < 2; i++) {
+                        if (player.handCards.length > 0) {
+                            const discardedCard = player.handCards.pop();
+                            this.discardPile.push(discardedCard);
+                            this.addLog(`🤖 ${player.name}弃掉了 ${discardedCard.name}`);
+                        }
+                    }
+                    const newCard = this.drawBasicCard();
+                    if (newCard) {
+                        player.handCards.push(newCard);
+                        this.addLog(`🤖 ${player.name}摸了一张牌`);
+                    }
+                }
+
+                const heartCards = player.handCards.filter(card => card.suit === 'heart');
+                if (heartCards.length > 0 && player.bloodCards.length < player.maxBloodCards) {
+                    const heartCard = heartCards[0];
+                    const cardIndex = player.handCards.indexOf(heartCard);
+                    if (cardIndex > -1) {
+                        const bloodCard = player.handCards.splice(cardIndex, 1)[0];
+                        bloodCard.faceUp = false;
+                        player.bloodCards.push(bloodCard);
+                        this.addLog(`🤖 ${player.name}放置 ${bloodCard.name} 到血牌区`);
+                    }
+                }
+
+                const attackablePlayers = this.players.filter(p => 
+                    p !== player && p.status !== 'unconscious' && p.status !== 'dead' && p.bloodCards.length > 0
+                );
+
+                if (attackablePlayers.length > 0 && !this.attackUsed) {
+                    const target = attackablePlayers[0];
+                    
+                    let attackCards = [];
+                    const spadeCards = player.handCards.filter(card => card.suit === 'spade');
+                    const wildCards = player.handCards.filter(card => this.isWildCard(card));
+                    
+                    for (const spadeCard of [...spadeCards, ...wildCards]) {
+                        const samePointCards = player.handCards.filter(card => 
+                            (card.point === spadeCard.point || card.isWild) && card !== spadeCard
+                        );
+                        if (samePointCards.length > 0) {
+                            attackCards = [spadeCard, samePointCards[0]];
+                            break;
+                        }
+                    }
+                    
+                    if (attackCards.length === 0 && (spadeCards.length > 0 || wildCards.length > 0)) {
+                        attackCards = [spadeCards[0] || wildCards[0]];
+                    }
+                    
+                    if (attackCards.length > 0) {
+                        const attackPower = attackCards.reduce((sum, card) => sum + card.point, 0);
+                        const defensePower = target.bloodCards[0]?.point || 0;
+
+                        if (attackPower > defensePower) {
+                            attackCards.forEach(card => {
+                                const cardIndex = player.handCards.indexOf(card);
+                                if (cardIndex > -1) {
+                                    const usedCard = player.handCards.splice(cardIndex, 1)[0];
+                                    this.discardPile.push(usedCard);
+                                }
+                            });
+
+                            const gainedCard = target.bloodCards.shift();
+                            if (gainedCard) {
+                                player.handCards.push(gainedCard);
+                                this.addLog(`🤖 ${player.name}攻击 ${target.name} 成功！获得 ${gainedCard.name}`);
+                            }
+                        } else {
+                            attackCards.forEach(card => {
+                                const cardIndex = player.handCards.indexOf(card);
+                                if (cardIndex > -1) {
+                                    const usedCard = player.handCards.splice(cardIndex, 1)[0];
+                                    this.discardPile.push(usedCard);
+                                }
+                            });
+                            this.addLog(`🤖 ${player.name}攻击 ${target.name} 失败`);
+                        }
+                        this.attackUsed = true;
+                    }
+                }
+
+                this.addLog(`🤖 ${player.name}结束回合`);
+                
+                if (this.uiManager) {
+                    this.uiManager.render();
+                }
+                
+                await new Promise(resolve => setTimeout(resolve, 2000));
+                this.nextTurn();
+            }
+
+            nextTurn() {
+                const currentPlayer = this.currentPlayer;
+                
+                if (currentPlayer.status === 'dying' && currentPlayer.isHuman) {
+                    const hasHeartCards = currentPlayer.handCards.some(card => card.suit === 'heart');
+                    if (!hasHeartCards) {
+                        currentPlayer.status = 'dead';
+                        this.addLog(`💀 ${currentPlayer.name}没有红心牌，死亡！`);
+                        this.checkGameEnd();
+                    }
+                }
+                
+                this.currentPlayerIndex = (this.currentPlayerIndex + 1) % this.players.length;
+                
+                if (this.currentPlayerIndex === 0) {
+                    this.round++;
+                }
+                
+                this.startNewTurn();
+                
+                if (this.uiManager) {
+                    this.uiManager.render();
+                }
+            }
+
+            checkGameEnd() {
+                const alivePlayers = this.players.filter(p => p.status !== 'dead');
+                if (alivePlayers.length === 1) {
+                    const winner = alivePlayers[0];
+                    this.addLog(`🎉 游戏结束！${winner.name}获胜！`);
+                    if (this.uiManager) {
+                        this.uiManager.showVictory(winner.name);
+                        this.uiManager.disableAllActions();
+                    }
+                    return true;
+                }
+                return false;
+            }
+
+            drawBasicCard() {
+                if (this.basicDeck.length === 0) {
+                    this.reshuffleBasicDeck();
+                }
+                
+                if (this.basicDeck.length === 0) {
+                    this.addLog('❌ 无牌可摸！');
+                    return null;
+                }
+                
+                const card = this.basicDeck.pop();
+                return card;
+            }
+
+            drawSpecialCard() {
+                if (this.specialDeck.length === 0) {
+                    this.addLog('❌ 特殊牌堆已空！');
+                    return null;
+                }
+                return this.specialDeck.pop();
+            }
+
+            reshuffleBasicDeck() {
+                const remainingBasicCards = [...this.basicDeck];
+                const discardedCards = [...this.discardPile];
+                
+                this.basicDeck = [...remainingBasicCards, ...discardedCards];
+                this.discardPile = [];
+                
+                if (this.basicDeck.length > 0) {
+                    this.shuffleDeck(this.basicDeck);
+                    this.addLog(`🔄 重新洗牌！基础牌:${remainingBasicCards.length}张 + 弃牌:${discardedCards.length}张 = 新牌堆${this.basicDeck.length}张`);
+                } else {
+                    this.addLog('⚠️ 所有牌都在玩家手中，无法洗牌');
+                }
+            }
+
+            shuffleDeck(deck) {
+                for (let i = deck.length - 1; i > 0; i--) {
+                    const j = Math.floor(Math.random() * (i + 1));
+                    [deck[i], deck[j]] = [deck[j], deck[i]];
+                }
+            }
+
+            placeBloodCard(card) {
+                const player = this.currentPlayer;
+                if (player.bloodCards.length >= player.maxBloodCards) {
+                    this.addLog('❌ 血牌区已满！');
+                    return false;
+                }
+                
+                const cardIndex = player.handCards.indexOf(card);
+                if (cardIndex > -1) {
+                    const bloodCard = player.handCards.splice(cardIndex, 1)[0];
+                    bloodCard.faceUp = false;
+                    player.bloodCards.push(bloodCard);
+                    this.addLog(`❤️ 放置 ${bloodCard.name} 到血牌区`);
+                    
+                    if (player.status === 'dying') {
+                        player.status = 'normal';
+                        this.addLog(`✅ ${player.name}脱离濒死状态`);
+                        if (this.uiManager) {
+                            this.uiManager.hideDyingWarning();
+                        }
+                    }
+                    return true;
+                }
+                return false;
+            }
+
+            selectSpecialCard(card) {
+                this.selectedSpecialCard = card;
+            }
+
+            selectHeartCard(card) {
+                this.selectedHeartCard = card;
+            }
+
+            performNormalAttack(targetId, cards) {
+                const attacker = this.currentPlayer;
+                const target = this.players.find(p => p.id === targetId);
+                
+                if (!target || target.status === 'unconscious' || target.status === 'dead') {
+                    alert('目标玩家无法被攻击！');
+                    return false;
+                }
+
+                const normalAttack = CardUtils.checkNormalAttack(cards);
+                if (!normalAttack) {
+                    alert('请选择单张黑桃牌或对子进行普通攻击！');
+                    return false;
+                }
+
+                const attackPower = normalAttack.power;
+                const defensePower = target.bloodCards[0]?.point || 0;
+
+                this.addLog(`⚔️ ${attacker.name}使用 ${normalAttack.name} 攻击 ${target.name}`);
+                this.addLog(`📊 攻击力: ${attackPower} vs 防御力: ${defensePower}`);
+
+                cards.forEach(card => {
+                    const cardIndex = attacker.handCards.indexOf(card);
+                    if (cardIndex > -1) {
+                        const usedCard = attacker.handCards.splice(cardIndex, 1)[0];
+                        this.discardPile.push(usedCard);
+                        this.addLog(`🗑️ ${usedCard.name}进入弃牌堆`);
+                    }
+                });
+
+                if (attackPower > defensePower) {
+                    const gainedCard = target.bloodCards.shift();
+                    if (gainedCard) {
+                        attacker.handCards.push(gainedCard);
+                        this.addLog(`🎉 获得了${gainedCard.name}！`);
+                    }
+
+                    if (target.bloodCards.length === 0) {
+                        target.status = 'dying';
+                        this.addLog(`💀 ${target.name}进入濒死状态！`);
+                    }
+                    
+                    this.attackUsed = true;
+                    return true;
+                } else {
+                    this.addLog('💥 攻击失败！');
+                    this.attackUsed = true;
+                    return false;
+                }
+            }
+
+            performSpecialAttack(targetId, comboKey) {
+                const attacker = this.currentPlayer;
+                const target = this.players.find(p => p.id === targetId);
+                const combo = CARD_COMBOS[comboKey];
+                
+                if (!target || target.status === 'unconscious' || target.status === 'dead') {
+                    alert('目标玩家无法被攻击！');
+                    return false;
+                }
+
+                const attackPower = combo.calculatePower(this.selectedCards);
+                const defensePower = target.bloodCards[0]?.point || 0;
+
+                this.addLog(`✨ ${attacker.name}使用 ${combo.name} 攻击 ${target.name}`);
+                this.addLog(`📊 攻击力: ${attackPower} vs 防御力: ${defensePower}`);
+
+                this.selectedCards.forEach(card => {
+                    const index = attacker.handCards.indexOf(card);
+                    if (index > -1) {
+                        const usedCard = attacker.handCards.splice(index, 1)[0];
+                        this.discardPile.push(usedCard);
+                        this.addLog(`🗑️ ${usedCard.name}进入弃牌堆`);
+                    }
+                });
+
+                if (attackPower > defensePower) {
+                    const gainedCard = target.bloodCards.shift();
+                    if (gainedCard) {
+                        attacker.handCards.push(gainedCard);
+                        this.addLog(`🎉 获得了${gainedCard.name}！`);
+                    }
+
+                    this.executeComboEffect(combo, attacker, target);
+                    
+                    if (target.bloodCards.length === 0) {
+                        target.status = 'dying';
+                        this.addLog(`💀 ${target.name}进入濒死状态！`);
+                    }
+                    return true;
+                } else {
+                    this.addLog('💥 攻击失败！');
+                    return false;
+                }
+            }
+
+            executeComboEffect(combo, attacker, target) {
+                const n = this.players.filter(p => p.status !== 'dead').length;
+                
+                switch(combo.effect) {
+                    case 'steal_all_hand_after_damage':
+                        this.players.forEach(player => {
+                            if (player !== attacker && player.status !== 'dead') {
+                                if (player.handCards.length > 0) {
+                                    const stolenCard = player.handCards.pop();
+                                    attacker.handCards.push(stolenCard);
+                                    this.addLog(`🃏 ${attacker.name}从${player.name}处抽取了${stolenCard.name}`);
+                                } else if (player.bloodCards.length > 0) {
+                                    const stolenCard = player.bloodCards[0];
+                                    player.bloodCards.splice(0, 1);
+                                    attacker.handCards.push(stolenCard);
+                                    this.addLog(`🃏 ${attacker.name}从${player.name}处抽取了血牌${stolenCard.name}`);
+                                }
+                            }
+                        });
+                        break;
+                        
+                    case 'steal_all_hand_and_draw_after_damage':
+                        this.players.forEach(player => {
+                            if (player !== attacker && player.status !== 'dead') {
+                                if (player.handCards.length > 0) {
+                                    const stolenCard = player.handCards.pop();
+                                    attacker.handCards.push(stolenCard);
+                                    this.addLog(`🃏 ${attacker.name}从${player.name}处抽取了${stolenCard.name}`);
+                                } else if (player.bloodCards.length > 0) {
+                                    const stolenCard = player.bloodCards[0];
+                                    player.bloodCards.splice(0, 1);
+                                    attacker.handCards.push(stolenCard);
+                                    this.addLog(`🃏 ${attacker.name}从${player.name}处抽取了血牌${stolenCard.name}`);
+                                }
+                            }
+                        });
+                        for (let i = 0; i < n; i++) {
+                            const newCard = this.drawBasicCard();
+                            if (newCard) {
+                                attacker.handCards.push(newCard);
+                            }
+                        }
+                        this.addLog(`🃏 ${attacker.name}摸了${n}张基础牌`);
+                        break;
+                        
+                    case 'take_all_hand_after_damage':
+                        if (target.handCards.length > 0) {
+                            target.handCards.forEach(card => {
+                                attacker.handCards.push(card);
+                            });
+                            this.addLog(`🃏 ${attacker.name}获得了${target.name}的所有手牌`);
+                            target.handCards = [];
+                            
+                            for (let i = 0; i < 2; i++) {
+                                const newCard = this.drawBasicCard();
+                                if (newCard) attacker.handCards.push(newCard);
+                            }
+                            this.addLog(`🃏 ${attacker.name}摸了2张基础牌`);
+                        } else if (target.bloodCards.length > 0) {
+                            const stolenCard = target.bloodCards[0];
+                            target.bloodCards.splice(0, 1);
+                            attacker.handCards.push(stolenCard);
+                            this.addLog(`🃏 ${attacker.name}从${target.name}处抽取了血牌${stolenCard.name}`);
+                            
+                            for (let i = 0; i < 3; i++) {
+                                const newCard = this.drawBasicCard();
+                                if (newCard) attacker.handCards.push(newCard);
+                            }
+                            this.addLog(`🃏 ${attacker.name}摸了3张基础牌`);
+                        }
+                        break;
+                        
+                    case 'multi_target_attack':
+                        const attackPower = combo.calculatePower(this.selectedCards);
+                        const targetCount = n - 1;
+                        const damagePerTarget = Math.floor(attackPower / targetCount);
+                        
+                        this.otherPlayers.slice(0, targetCount).forEach(player => {
+                            if (player.bloodCards.length > 0 && damagePerTarget > player.bloodCards[0].point) {
+                                const gainedCard = player.bloodCards.shift();
+                                attacker.handCards.push(gainedCard);
+                                this.addLog(`🎯 ${attacker.name}对${player.name}造成${damagePerTarget}点伤害，获得${gainedCard.name}`);
+                                
+                                if (player.handCards.length > 0) {
+                                    const discardedCard = player.handCards.pop();
+                                    this.discardPile.push(discardedCard);
+                                    this.addLog(`🗑️ ${attacker.name}弃置了${player.name}的${discardedCard.name}`);
+                                }
+                            }
+                        });
+                        break;
+                        
+                    case 'draw_after_damage':
+                        const newCard = this.drawBasicCard();
+                        if (newCard) {
+                            attacker.handCards.push(newCard);
+                            this.addLog(`🃏 ${attacker.name}使用板砖摸了一张基础牌`);
+                        }
+                        break;
+                }
+            }
+
+            enforceHandLimit() {
+                const player = this.currentPlayer;
+                if (player.handCards.length <= player.maxHandCards) {
+                    this.forceDiscardMode = false;
+                    return true;
+                }
+                return false;
+            }
+
+            performForceDiscardDraw() {
+                const player = this.currentPlayer;
+                if (this.selectedCards.length !== 2) {
+                    alert('请选择正好2张牌弃掉！');
+                    return false;
+                }
+
+                this.selectedCards.forEach(card => {
+                    const index = player.handCards.indexOf(card);
+                    if (index > -1) {
+                        const discardedCard = player.handCards.splice(index, 1)[0];
+                        this.discardPile.push(discardedCard);
+                        this.addLog(`🗑️ 弃掉了 ${discardedCard.name}`);
+                    }
+                });
+
+                this.selectedCards = [];
+                
+                const newCard = this.drawBasicCard();
+                if (newCard) {
+                    player.handCards.push(newCard);
+                    this.addLog(`🃏 摸了一张牌`);
+                }
+
+                this.forceDiscardMode = false;
+                
+                return true;
+            }
+
+            get currentPlayer() { 
+                return this.players[this.currentPlayerIndex]; 
+            }
+            
+            get otherPlayers() { 
+                return this.players.filter((_, i) => i !== this.currentPlayerIndex && this.players[i].status !== 'dead'); 
+            }
+
+            addLog(message) {
+                this.gameLog.push({ 
+                    time: new Date().toLocaleTimeString(), 
+                    message: message 
+                });
+                if (this.gameLog.length > 30) {
+                    this.gameLog.shift();
+                }
+                
+                if (this.uiManager) {
+                    this.uiManager.renderLog();
+                }
+            }
+        };
+
+        // UI 管理器
+        class UIManager {
+            constructor(gameState) {
+                this.gameState = gameState;
+                this.gameState.uiManager = this;
+                this.selectedTarget = null;
+                this.selectedCombo = null;
+                this.lastClickTime = 0;
+                this.doubleClickDelay = 300;
+                this.initializeUI();
+            }
+
+            initializeUI() {
+                this.bindEvents();
+                this.render();
+            }
+
+            bindEvents() {
+                document.getElementById('new-game').addEventListener('click', () => {
+                    this.gameState = new GameState(2, this);
+                    this.render();
+                });
+
+                document.getElementById('place-blood-btn').addEventListener('click', () => {
+                    this.handlePlaceBlood();
+                });
+
+                document.getElementById('attack-btn').addEventListener('click', () => {
+                    this.handleNormalAttack();
+                });
+
+                document.getElementById('special-attack-btn').addEventListener('click', () => {
+                    this.handleSpecialAttack();
+                });
+
+                document.getElementById('discard-btn').addEventListener('click', () => {
+                    this.handleDiscardDraw();
+                });
+
+                document.getElementById('end-turn').addEventListener('click', () => {
+                    this.handleEndTurn();
+                });
+
+                document.getElementById('confirm-attack').addEventListener('click', () => {
+                    this.confirmNormalAttack();
+                });
+
+                document.getElementById('cancel-attack').addEventListener('click', () => {
+                    this.cancelAttack();
+                });
+
+                document.getElementById('confirm-combo').addEventListener('click', () => {
+                    this.confirmComboSelection();
+                });
+
+                document.getElementById('cancel-combo').addEventListener('click', () => {
+                    this.cancelComboSelection();
+                });
+
+                document.getElementById('move-to-hand').addEventListener('click', () => {
+                    this.handleMoveToHand();
+                });
+
+                document.getElementById('move-to-blood').addEventListener('click', () => {
+                    this.handleMoveToBlood();
+                });
+
+                document.getElementById('cancel-special').addEventListener('click', () => {
+                    this.cancelSpecialCardSelection();
+                });
+
+                document.getElementById('retrieve-heart').addEventListener('click', () => {
+                    this.handleRetrieveHeart();
+                });
+
+                document.getElementById('cancel-heart').addEventListener('click', () => {
+                    this.cancelHeartCardSelection();
+                });
+            }
+
+            showDyingWarning() {
+                document.getElementById('dying-warning').classList.remove('hidden');
+            }
+
+            hideDyingWarning() {
+                document.getElementById('dying-warning').classList.add('hidden');
+            }
+
+            showHandLimitWarning() {
+                document.getElementById('hand-limit-warning').classList.remove('hidden');
+            }
+
+            hideHandLimitWarning() {
+                document.getElementById('hand-limit-warning').classList.add('hidden');
+            }
+
+            showVictory(winnerName) {
+                const victoryMessage = document.getElementById('victory-message');
+                victoryMessage.textContent = `🎉 ${winnerName} 获胜！`;
+                victoryMessage.classList.remove('hidden');
+            }
+
+            disableAllActions() {
+                document.getElementById('place-blood-btn').disabled = true;
+                document.getElementById('attack-btn').disabled = true;
+                document.getElementById('special-attack-btn').disabled = true;
+                document.getElementById('equip-btn').disabled = true;
+                document.getElementById('discard-btn').disabled = true;
+                document.getElementById('end-turn').disabled = true;
+                document.getElementById('special-card-actions').classList.add('hidden');
+                document.getElementById('heart-card-actions').classList.add('hidden');
+            }
+
+            handleEndTurn() {
+                if (this.gameState.currentPlayer.isHuman) {
+                    const player = this.gameState.currentPlayer;
+                    if (player.handCards.length > player.maxHandCards) {
+                        this.gameState.forceDiscardMode = true;
+                        this.gameState.addLog(`⚠️ 回合结束！手牌超过上限${player.maxHandCards}张，需要弃2张牌并摸1张牌`);
+                        this.render();
+                        return;
+                    }
+                    
+                    this.gameState.nextTurn();
+                    this.render();
+                }
+            }
+
+            render() {
+                this.renderPlayerArea();
+                this.renderOpponents();
+                this.renderGameInfo();
+                this.renderLog();
+                this.updateActionButtons();
+                
+                if (this.gameState.currentPlayer.status === 'dying' && this.gameState.currentPlayer.isHuman) {
+                    this.showDyingWarning();
+                } else {
+                    this.hideDyingWarning();
+                }
+                
+                if (this.gameState.forceDiscardMode && this.gameState.currentPlayer.isHuman) {
+                    this.showHandLimitWarning();
+                } else {
+                    this.hideHandLimitWarning();
+                }
+            }
+
+            renderPlayerArea() {
+                const player = this.gameState.currentPlayer;
+                
+                document.getElementById('hand-count').textContent = player.handCards.length;
+                document.getElementById('max-hand').textContent = player.maxHandCards;
+                document.getElementById('blood-count').textContent = player.bloodCards.length;
+                document.getElementById('player-status').textContent = this.getStatusText(player.status);
+
+                this.renderCards('hand-cards', player.handCards, player.isHuman);
+                this.renderCards('blood-cards', player.bloodCards, player.isHuman);
+            }
+
+            renderOpponents() {
+                const opponentsArea = document.getElementById('opponents-area');
+                opponentsArea.innerHTML = '';
+
+                this.gameState.otherPlayers.forEach(player => {
+                    const opponentElement = document.createElement('div');
+                    opponentElement.className = 'opponent';
+                    
+                    let bloodCardsHTML = '';
+                    for (let i = 0; i < player.maxBloodCards; i++) {
+                        if (i < player.bloodCards.length) {
+                            const card = player.bloodCards[i];
+                            const isFaceUp = card.faceUp || false;
+                            bloodCardsHTML += `
+                                <div class="blood-card-slot ${isFaceUp ? 'face-up' : ''}">
+                                    ${isFaceUp ? card.point + '点' : '?'}
+                                </div>
+                            `;
+                        } else {
+                            bloodCardsHTML += '<div class="blood-card-slot empty">空</div>';
+                        }
+                    }
+
+                    opponentElement.innerHTML = `
+                        <div class="opponent-info">
+                            <div class="opponent-name">${player.name} ${player.status === 'dead' ? '💀' : '🤖'}</div>
+                            <div class="opponent-stats">
+                                手牌:${player.handCards.length} 
+                                状态:${this.getStatusText(player.status)}
+                            </div>
+                        </div>
+                        <div class="opponent-blood-cards">${bloodCardsHTML}</div>
+                    `;
+                    opponentsArea.appendChild(opponentElement);
+                });
+            }
+
+            renderCards(containerId, cards, selectable) {
+                const container = document.getElementById(containerId);
+                container.innerHTML = '';
+
+                cards.forEach(card => {
+                    const cardElement = document.createElement('div');
+                    const isSpecial = this.gameState.isSpecialCard(card);
+                    const isWild = this.gameState.isWildCard(card);
+                    const isHeart = this.gameState.isHeartCard(card);
+                    
+                    cardElement.className = `card ${card.suit} ${this.gameState.selectedCards.includes(card) ? 'selected' : ''} ${isSpecial ? 'special' : ''} ${isWild ? 'wild' : ''} ${isHeart && containerId === 'blood-cards' ? 'heart-blood' : ''}`;
+                    
+                    let doubleClickHint = '';
+                    if (containerId === 'blood-cards' && (isSpecial || isHeart)) {
+                        doubleClickHint = '<div class="double-click-hint">双击操作</div>';
+                    }
+                    
+                    cardElement.innerHTML = `
+                        <div class="card-rank">${CardUtils.getRankDisplay(card.rank)}</div>
+                        <div class="card-suit">${CardUtils.getSuitSymbol(card.suit)}</div>
+                        <div class="card-point">${card.point}点</div>
+                        ${doubleClickHint}
+                    `;
+
+                    if (selectable) {
+                        cardElement.addEventListener('click', (e) => {
+                            const currentTime = new Date().getTime();
+                            const timeDiff = currentTime - this.lastClickTime;
+                            
+                            if (timeDiff < this.doubleClickDelay && this.lastClickedCard === card) {
+                                if (isSpecial || isHeart) {
+                                    this.handleBloodCardDoubleClick(card, containerId);
+                                }
+                                this.lastClickTime = 0;
+                                this.lastClickedCard = null;
+                            } else {
+                                this.lastClickTime = currentTime;
+                                this.lastClickedCard = card;
+                                
+                                if (containerId === 'blood-cards') {
+                                    // 血牌区单机不选择，只处理双击
+                                } else {
+                                    this.toggleCardSelection(card);
+                                }
+                            }
+                        });
+                    }
+
+                    container.appendChild(cardElement);
+                });
+            }
+
+            handleBloodCardDoubleClick(card, containerId) {
+                const isSpecial = this.gameState.isSpecialCard(card);
+                const isHeart = this.gameState.isHeartCard(card);
+                
+                if (isSpecial) {
+                    this.gameState.selectSpecialCard(card);
+                    this.showSpecialCardActions(containerId);
+                } else if (isHeart) {
+                    this.gameState.selectHeartCard(card);
+                    this.showHeartCardActions(containerId);
+                }
+            }
+
+            showSpecialCardActions(sourceContainer) {
+                const specialActions = document.getElementById('special-card-actions');
+                const moveToHandBtn = document.getElementById('move-to-hand');
+                const moveToBloodBtn = document.getElementById('move-to-blood');
+                
+                if (sourceContainer === 'blood-cards') {
+                    moveToHandBtn.disabled = false;
+                    moveToBloodBtn.disabled = true;
+                    moveToHandBtn.textContent = '🃏 移入手牌';
+                    moveToBloodBtn.textContent = '❤️ 已在血牌';
+                    moveToHandBtn.style.background = '#9b59b6';
+                    moveToBloodBtn.style.background = '#7f8c8d';
+                } else {
+                    moveToHandBtn.disabled = true;
+                    moveToBloodBtn.disabled = false;
+                    moveToHandBtn.textContent = '🃏 已在手牌';
+                    moveToBloodBtn.textContent = '❤️ 放回血牌';
+                    moveToHandBtn.style.background = '#7f8c8d';
+                    moveToBloodBtn.style.background = '#9b59b6';
+                }
+                
+                document.getElementById('heart-card-actions').classList.add('hidden');
+                specialActions.classList.remove('hidden');
+            }
+
+            showHeartCardActions(sourceContainer) {
+                const heartActions = document.getElementById('heart-card-actions');
+                const retrieveHeartBtn = document.getElementById('retrieve-heart');
+                
+                if (sourceContainer === 'blood-cards') {
+                    retrieveHeartBtn.disabled = false;
+                    retrieveHeartBtn.textContent = '🃏 移入手牌';
+                    retrieveHeartBtn.style.background = '#e74c3c';
+                }
+                
+                document.getElementById('special-card-actions').classList.add('hidden');
+                heartActions.classList.remove('hidden');
+            }
+
+            hideSpecialCardActions() {
+                document.getElementById('special-card-actions').classList.add('hidden');
+            }
+
+            hideHeartCardActions() {
+                document.getElementById('heart-card-actions').classList.add('hidden');
+            }
+
+            handleMoveToHand() {
+                if (this.gameState.moveBloodToHand(this.gameState.selectedSpecialCard)) {
+                    this.hideSpecialCardActions();
+                    this.gameState.selectedSpecialCard = null;
+                    this.render();
+                }
+            }
+
+            handleMoveToBlood() {
+                if (this.gameState.moveHandToBlood(this.gameState.selectedSpecialCard)) {
+                    this.hideSpecialCardActions();
+                    this.gameState.selectedSpecialCard = null;
+                    this.render();
+                }
+            }
+
+            handleRetrieveHeart() {
+                if (this.gameState.retrieveHeartToHand(this.gameState.selectedHeartCard)) {
+                    this.hideHeartCardActions();
+                    this.gameState.selectedHeartCard = null;
+                    this.render();
+                }
+            }
+
+            cancelSpecialCardSelection() {
+                this.gameState.selectedSpecialCard = null;
+                this.hideSpecialCardActions();
+            }
+
+            cancelHeartCardSelection() {
+                this.gameState.selectedHeartCard = null;
+                this.hideHeartCardActions();
+            }
+
+            renderGameInfo() {
+                document.getElementById('round').textContent = this.gameState.round;
+                document.getElementById('phase').textContent = this.getPhaseText(this.gameState.phase);
+            }
+
+            renderLog() {
+                const logContent = document.getElementById('log-content');
+                logContent.innerHTML = '';
+
+                this.gameState.gameLog.forEach(logEntry => {
+                    const logElement = document.createElement('div');
+                    logElement.className = 'log-entry';
+                    logElement.textContent = `${logEntry.message}`;
+                    logContent.appendChild(logElement);
+                });
+
+                logContent.scrollTop = logContent.scrollHeight;
+            }
+
+            toggleCardSelection(card) {
+                if (!this.gameState.currentPlayer.isHuman) return;
+                
+                if (this.gameState.forceDiscardMode) {
+                    const currentSelected = this.gameState.selectedCards.length;
+                    const maxSelect = 2;
+                    
+                    const index = this.gameState.selectedCards.indexOf(card);
+                    if (index > -1) {
+                        this.gameState.selectedCards.splice(index, 1);
+                    } else {
+                        if (currentSelected < maxSelect) {
+                            this.gameState.selectedCards.push(card);
+                        } else {
+                            alert('只能选择2张牌弃掉！');
+                            return;
+                        }
+                    }
+                } else {
+                    const index = this.gameState.selectedCards.indexOf(card);
+                    if (index > -1) {
+                        this.gameState.selectedCards.splice(index, 1);
+                    } else {
+                        this.gameState.selectedCards.push(card);
+                    }
+                }
+                
+                this.render();
+                this.updateActionButtons();
+            }
+
+            handlePlaceBlood() {
+                if (this.gameState.forceDiscardMode) {
+                    alert('请先完成弃牌摸牌！');
+                    return;
+                }
+
+                if (this.gameState.selectedCards.length !== 1) {
+                    alert('请选择一张红心牌放置到血牌区！');
+                    return;
+                }
+
+                const card = this.gameState.selectedCards[0];
+                if (card.suit !== 'heart') {
+                    alert('只能放置红心牌到血牌区！');
+                    return;
+                }
+
+                if (this.gameState.placeBloodCard(card)) {
+                    this.gameState.selectedCards = [];
+                    this.render();
+                }
+            }
+
+            handleNormalAttack() {
+                if (this.gameState.forceDiscardMode) {
+                    alert('请先完成弃牌摸牌！');
+                    return;
+                }
+
+                if (this.gameState.selectedCards.length === 0) {
+                    alert('请选择要用于攻击的卡牌！');
+                    return;
+                }
+
+                const normalAttack = CardUtils.checkNormalAttack(this.gameState.selectedCards);
+                if (!normalAttack) {
+                    alert('请选择单张黑桃牌或对子进行普通攻击！');
+                    return;
+                }
+
+                this.showTargetSelection('normal');
+            }
+
+            handleSpecialAttack() {
+                if (this.gameState.forceDiscardMode) {
+                    alert('请先完成弃牌摸牌！');
+                    return;
+                }
+
+                if (this.gameState.selectedCards.length < 1) {
+                    alert('请选择要用于特殊攻击的卡牌！');
+                    return;
+                }
+
+                const availableCombos = CardUtils.checkCardCombos(this.gameState.selectedCards, this.gameState.players.filter(p => p.status !== 'dead').length);
+                if (availableCombos.length === 0) {
+                    alert('选择的卡牌无法组成有效的牌形！');
+                    return;
+                }
+
+                this.showComboSelection(availableCombos);
+            }
+
+            showComboSelection(combos) {
+                const modal = document.getElementById('combo-selection');
+                const comboOptions = document.getElementById('combo-options');
+                const confirmButton = document.getElementById('confirm-combo');
+                
+                comboOptions.innerHTML = '';
+                this.selectedCombo = null;
+                confirmButton.disabled = true;
+                
+                combos.forEach(combo => {
+                    const option = document.createElement('div');
+                    option.className = 'combo-option';
+                    option.innerHTML = `
+                        <h4>${combo.name}</h4>
+                        <p>${combo.description}</p>
+                        <p>攻击力: ${combo.power}</p>
+                    `;
+                    option.addEventListener('click', () => {
+                        document.querySelectorAll('.combo-option').forEach(el => {
+                            el.classList.remove('selected');
+                        });
+                        option.classList.add('selected');
+                        this.selectedCombo = combo.key;
+                        confirmButton.disabled = false;
+                    });
+                    comboOptions.appendChild(option);
+                });
+
+                modal.classList.remove('hidden');
+            }
+
+            confirmComboSelection() {
+                if (!this.selectedCombo) {
+                    alert('请先选择一个牌形！');
+                    return;
+                }
+                
+                document.getElementById('combo-selection').classList.add('hidden');
+                this.showTargetSelection('special');
+            }
+
+            showTargetSelection(attackType) {
+                const modal = document.getElementById('card-selection');
+                const targetPlayers = document.getElementById('target-players');
+                
+                targetPlayers.innerHTML = '';
+                
+                this.gameState.otherPlayers.forEach(player => {
+                    if (player.status !== 'unconscious' && player.status !== 'dead') {
+                        const button = document.createElement('button');
+                        button.textContent = `攻击 ${player.name} (血牌:${player.bloodCards.length})`;
+                        button.addEventListener('click', () => {
+                            this.selectedTarget = player.id;
+                            modal.classList.add('hidden');
+                            
+                            if (attackType === 'normal') {
+                                this.confirmNormalAttack();
+                            } else if (attackType === 'special') {
+                                this.executeSpecialAttack();
+                            }
+                        });
+                        targetPlayers.appendChild(button);
+                    }
+                });
+
+                modal.classList.remove('hidden');
+            }
+
+            confirmNormalAttack() {
+                if (!this.selectedTarget) return;
+
+                if (this.gameState.performNormalAttack(this.selectedTarget, this.gameState.selectedCards)) {
+                    this.gameState.selectedCards = [];
+                    this.render();
+                }
+                
+                this.selectedTarget = null;
+            }
+
+            executeSpecialAttack() {
+                if (!this.selectedTarget || !this.selectedCombo) {
+                    alert('系统错误：缺少目标或牌形信息');
+                    return;
+                }
+
+                if (this.gameState.performSpecialAttack(this.selectedTarget, this.selectedCombo)) {
+                    this.gameState.selectedCards = [];
+                    this.gameState.selectedCombo = null;
+                    this.render();
+                }
+                
+                this.selectedTarget = null;
+                this.selectedCombo = null;
+            }
+
+            cancelAttack() {
+                document.getElementById('card-selection').classList.add('hidden');
+                this.selectedTarget = null;
+            }
+
+            cancelComboSelection() {
+                document.getElementById('combo-selection').classList.add('hidden');
+                this.selectedCombo = null;
+            }
+
+            handleDiscardDraw() {
+                if (this.gameState.forceDiscardMode) {
+                    if (this.gameState.performForceDiscardDraw()) {
+                        this.render();
+                    }
+                    return;
+                }
+
+                if (this.gameState.selectedCards.length < 2) {
+                    alert('弃牌摸牌需要至少选择2张牌！');
+                    return;
+                }
+
+                this.gameState.selectedCards.forEach(card => {
+                    const index = this.gameState.currentPlayer.handCards.indexOf(card);
+                    if (index > -1) {
+                        const removedCard = this.gameState.currentPlayer.handCards.splice(index, 1)[0];
+                        this.gameState.discardPile.push(removedCard);
+                    }
+                });
+
+                this.gameState.addLog(`🗑️ ${this.gameState.currentPlayer.name}弃掉了${this.gameState.selectedCards.length}张牌`);
+
+                const newCard = this.gameState.drawBasicCard();
+                if (newCard) {
+                    this.gameState.currentPlayer.handCards.push(newCard);
+                    this.gameState.addLog(`🃏 摸了一张牌`);
+                }
+
+                this.gameState.selectedCards = [];
+                this.render();
+            }
+
+            updateActionButtons() {
+                const player = this.gameState.currentPlayer;
+                const isHumanTurn = player.isHuman;
+                const hasSelectedCards = this.gameState.selectedCards.length > 0;
+                const canNormalAttack = CardUtils.checkNormalAttack(this.gameState.selectedCards) !== null;
+                const canFormCombo = CardUtils.checkCardCombos(this.gameState.selectedCards, this.gameState.players.filter(p => p.status !== 'dead').length).length > 0;
+                
+                if (this.gameState.forceDiscardMode) {
+                    const canConfirmDiscard = this.gameState.selectedCards.length === 2;
+                    
+                    document.getElementById('place-blood-btn').disabled = true;
+                    document.getElementById('attack-btn').disabled = true;
+                    document.getElementById('special-attack-btn').disabled = true;
+                    document.getElementById('equip-btn').disabled = true;
+                    document.getElementById('discard-btn').disabled = !canConfirmDiscard;
+                    document.getElementById('end-turn').disabled = true;
+                    
+                    document.getElementById('discard-btn').textContent = `确认弃2张牌摸牌`;
+                    return;
+                }
+                
+                if (player.status === 'dying') {
+                    document.getElementById('place-blood-btn').disabled = !isHumanTurn || !(hasSelectedCards && this.gameState.selectedCards[0].suit === 'heart');
+                    document.getElementById('attack-btn').disabled = true;
+                    document.getElementById('special-attack-btn').disabled = true;
+                    document.getElementById('equip-btn').disabled = true;
+                    document.getElementById('discard-btn').disabled = true;
+                    document.getElementById('end-turn').disabled = !isHumanTurn;
+                } else {
+                    document.getElementById('place-blood-btn').disabled = !isHumanTurn || !(hasSelectedCards && this.gameState.selectedCards[0].suit === 'heart');
+                    document.getElementById('attack-btn').disabled = !isHumanTurn || !hasSelectedCards || !canNormalAttack || this.gameState.attackUsed;
+                    document.getElementById('special-attack-btn').disabled = !isHumanTurn || !hasSelectedCards || !canFormCombo;
+                    document.getElementById('equip-btn').disabled = true;
+                    document.getElementById('discard-btn').disabled = !isHumanTurn || this.gameState.selectedCards.length < 2;
+                    document.getElementById('end-turn').disabled = !isHumanTurn;
+                }
+                
+                document.getElementById('discard-btn').textContent = '🔄 弃牌摸牌';
+            }
+
+            getStatusText(status) {
+                const statusTexts = { 
+                    'normal': '正常', 
+                    'unconscious': '昏迷', 
+                    'dying': '濒死',
+                    'dead': '死亡'
+                };
+                return statusTexts[status] || status;
+            }
+
+            getPhaseText(phase) {
+                const phaseTexts = { 
+                    'draw': '摸牌', 
+                    'main': '主要', 
+                    'attack': '攻击', 
+                    'end': '结束' 
+                };
+                return phaseTexts[phase] || phase;
+            }
+        }
+
+        // 启动游戏
+        document.addEventListener('DOMContentLoaded', () => {
+            const gameState = new GameState(2);
+            const uiManager = new UIManager(gameState);
+            window.gameState = gameState;
+        });
+    </script>
+</body>
+</html>
